@@ -22,6 +22,9 @@ from sensor_msgs.msg import JointState
 import numpy as np
 
 def message_from_transform(T):
+    '''
+    convert the transform message received
+    '''
     msg = geometry_msgs.msg.Transform()
     q = tf.transformations.quaternion_from_matrix(T)
     p = tf.transformations.translation_from_matrix(T)
@@ -35,10 +38,16 @@ def message_from_transform(T):
     return msg
 
 def homo_transformation(alpha, a, theta, d):
+    '''
+    Perform the homogenous transformation from euler parameters
+    '''
 
     rot_x   = tf.transformations.quaternion_matrix(tf.transformations.quaternion_from_euler(alpha, 0.0, 0.0))
+
     trans_x = tf.transformations.translation_matrix([a, 0.0, 0.0])
+
     rot_z   = tf.transformations.quaternion_matrix(tf.transformations.quaternion_from_euler(0.0, 0.0, theta))
+
     trans_z = tf.transformations.translation_matrix([0.0, 0.0, d])
     
     return tf.transformations.concatenate_matrices(rot_x, trans_x, rot_z, trans_z)
@@ -48,12 +57,15 @@ class ik_calculator(object):
     def __init__(self):
         self.joint_values = [0.0 for i in range(7)]
         # joint state sub.
+
         rospy.Subscriber("/joint_states", JointState, self.joint_states_callback)
         # ik calculator server
+
         self.ik_server = rospy.Service('calculate_ik', CalculateIK, self.handle_calculate_IK)
         # trans. publisher
         #self.tf_broadcaster = tf2_ros.TransformBroadcaster()
         # parameters
+
         self.params = {'alpha0':        0, 'a0':     0 , 'd1':  0.75,
                        'alpha1': -np.pi/2, 'a1':   0.35, 'd2':     0,
                        'alpha2':        0, 'a2':   1.25, 'd3':     0,
@@ -63,7 +75,9 @@ class ik_calculator(object):
                        'alpha6':        0, 'a6':      0, 'd7': 0.453}
 
     def FK_calculator(self,joint_values):
-        
+        '''
+        Forward Kinematics Calculator
+        '''        
         s = {'alpha0':        0, 'a0':     0 , 'd1':  0.75, 'q1':           joint_values[0],
              'alpha1': -np.pi/2, 'a1':   0.35, 'd2':     0, 'q2': joint_values[1] - np.pi/2,
              'alpha2':        0, 'a2':   1.25, 'd3':     0, 'q3':           joint_values[2],
@@ -103,6 +117,9 @@ class ik_calculator(object):
             self.joint_values[i - 2] = joint_state.position[i]
 
     def handle_calculate_IK(self,req):
+        '''
+        Calculate IK on request
+        '''
         rospy.loginfo("Received %s eef-poses from the plan" % len(req.poses))
         if len(req.poses) < 1:
             print "No valid poses received"
@@ -115,6 +132,7 @@ class ik_calculator(object):
                 # IK code starts here
                 joint_trajectory_point = JointTrajectoryPoint()
                 
+
                 # Extract end-effector position and orientation from request
                 # px,py,pz = end-effector position
                 # roll, pitch, yaw = end-effector orientation
@@ -132,7 +150,7 @@ class ik_calculator(object):
                 T0G = np.dot(tf.transformations.translation_matrix(P0G), tf.transformations.quaternion_matrix([req.poses[x].orientation.x, req.poses[x].orientation.y,
                         req.poses[x].orientation.z, req.poses[x].orientation.w]))
                 
-                ##########################################################################################
+##########################################################################################                ##########################################################################################
                 # correcting transformations
                 TC1 = tf.transformations.quaternion_matrix(tf.transformations.quaternion_from_euler(0.0, 0.0, np.pi))
                 TC2 = tf.transformations.quaternion_matrix(tf.transformations.quaternion_from_euler(0.0, -np.pi/2, 0.0))
@@ -162,8 +180,11 @@ class ik_calculator(object):
                 # base_link
                 P25 = P05 - P02
                 
+
                 # link_5 w.r.t frame 2
                 P25_2 = np.dot(R20,P25)
+
+
 
                 ### distance from joint 3 to 5
                 d = np.sqrt(0.054**2 + (0.96 + 0.54)**2)
@@ -174,7 +195,11 @@ class ik_calculator(object):
                 beta2 = np.arccos((l**2 + s['a2']**2 - d**2)/(2*s['a2']*l))
 
                 theta2 = np.pi/2 - (beta1 + beta2)
+
+
                 ##### theta 3 ######
+
+
 
                 phi = np.arccos((s['a2']**2 + d**2 - l**2)/(2*s['a2']*d))
                 alpha = np.arctan2(0.054,1.5)
@@ -192,8 +217,11 @@ class ik_calculator(object):
                 R36 = np.dot(np.linalg.inv(R03),R)
 
                 theta4 = np.arctan2(R36[2,2],-R36[0,2]) 
+
                 ######## theta 5 ######
                 theta5 = np.arctan2(np.sqrt(R36[1,0]**2 + R36[1,1]**2),R36[1,2])
+
+
                 ######## theta 6 ########
                 theta6 = np.arctan2(-R36[1,1],R36[1,0])
 
@@ -206,6 +234,7 @@ class ik_calculator(object):
                     theta6 = np.arctan2(-R36[0,1],-R36[2,1])
 
                 #theta = [theta1, theta2, theta3, theta4, theta5, theta6, 0]
+
 
 
                 # Populate response for the IK request

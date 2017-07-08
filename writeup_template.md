@@ -14,12 +14,14 @@
 
 [//]: # "Image References"
 
+
 [DH_config]: ./misc_images/DH_config.jpg
 [fk_demo]: ./misc_images/forward_demo.jpg
 [DH]: ./misc_images/DH_config.png
 [q23]: ./misc_images/q23.png
 [IK_example]: ./misc_images/IK_example.png
 [result]: ./misc_images/result.jpg
+
 
 ---
 ### Kinematic Analysis
@@ -31,9 +33,12 @@ Run `roslaunch kuka_arm forward_kinematics.launch` and screenshot it
 
 We can find the URDF configuration in this forward kinematics demo or  `kr210.urdf.xacro`. Then we will figure out all parameters of the following DH figure and obtain Table.I.
 
+
+
 ![alt text][DH]
 
 Table.I The relative location of joint i-1  to  i
+
 
 | Joint   | X     | Y    | Z      | Roll, Pitch, Yaw |
 | ------- | ----- | ---- | ------ | ---------------- |
@@ -46,6 +51,7 @@ Table.I The relative location of joint i-1  to  i
 | gripper | 0.11  | 0    | 0      | 0                |
 
 Now, we can obtain our modified DH table.
+
 
 Table. II The modified DH parameters
 
@@ -70,6 +76,7 @@ The DH parameter code
           alpha4:  pi / 2, a4:      0, d5:     0,
           alpha5: -pi / 2, a5:      0, d6:     0,
           alpha6:       0, a6:      0, d7: 0.453, q7: 0}
+
 ```
 The individual transformation matrix likes the following function `DH_transform()`.
 ```
@@ -83,6 +90,7 @@ The individual transformation matrix likes the following function `DH_transform(
         return T0_1
 ```
 
+
 Then the homogeneous transform matrix about each joint can be derived using
 
 $^{N}_0T = ^{0}_{1}T ^1_2T ^2_3T...^{N-1}_NT $
@@ -90,6 +98,8 @@ $^{N}_0T = ^{0}_{1}T ^1_2T ^2_3T...^{N-1}_NT $
 **Notice:** we need correct transform matrix from URDF frame to world frame multiplied by `R_corr` for the gripper pose.
 
 ```
+
+
 T0_2 = simplify(T0_1 * T1_2)
 T0_3 = simplify(T0_2 * T2_3)
 T0_4 = simplify(T0_3 * T3_4)
@@ -101,11 +111,14 @@ T_total = T0_G * R_corr
 
 If we know the gripper pose, we can also obtain one transform matrix between `base_link` and `gripper_link`. 
 
+
+
 Even though `roll, pitch, yaw` are terms in *intrinsic* rotation, the `roll, pitch, yaw` are calculated with `tf.transformations.euler_from_quaternion` with default rotation sequence from quaternion ('sxyz' is default setting) in this project code, hence *extrinsic* rotation is used here to calculate `Rrpy`.
 
 ```
 Rrpy = rot_yaw(y)* rot_pitch(p) * rot_roll(r) * R_corr
 ```
+
 
 ##### Example:
 
@@ -129,11 +142,15 @@ T_total =  Matrix([
 
 Execute gripper position from above matrix `p_fk = T_total[0:3,3]`, 
 
+
 Find its position from RViz `p_g = Matrix([[0.65841], [-1.1795], [1.0837]])`.
 
 We can calculate the FK error now. `error = p_fk - p_g` and `error.norm()`. 
 
+
 This position error is `0.00171302362221487`.
+
+
 
 #### 3. Decouple Inverse Kinematics problem into Inverse Position Kinematics and inverse Orientation Kinematics; doing so derive the equations to calculate all individual joint angles.
 
@@ -175,6 +192,8 @@ $\theta_1$ is quite straightforward, `theta1 = atan2(pwc_y, pwc_x`
 
 ​	$\theta_2 = \frac{\pi}{2} - (\theta_{21} + \theta_{22})$
 
+
+
 5) Find `theta4, 5 and 6`
 
 The progress is quite straightforward. Because our URDF configuration doesn't follow DH conventions, the rotation matrix `R3_6` is not same with common matrices `yzy` , `zyz`, etc. But we have created all transformation matrices about `base frame` , includes `T0_3` and `T0_6`. Hence, it is easy to find `R3_6` symbol matrix for our project.
@@ -202,6 +221,8 @@ To solve the singularity problem, more conditional statements are used in code.
 ##### Example:
 
 Use the forward demo again, we obtain the gripper pose as input this time, and then we should compare our calculated results with those `thetas` in slider window. But it would be different on angle values because there are multiple solution for one gripper pose, hence, we use these calculated thetas as input our FK again to compare the FK's output with the gripper position from RViz here.![lt text][IK_example]
+
+
 
  As we can found in this figure, the gripper position is `[0.498,1.367,2.499]` and orientation is `[0.015,-0.185,0.939,0.288]`. 
 
@@ -243,6 +264,8 @@ theta3 = (theta32 + theta31 - pi/2).subs(s)
 ```
 
 We got a different theta3 `theta3 = -0.11568665105374737` as well.
+
+
 
 4) Calculate `theta2`
 
@@ -294,16 +317,20 @@ T_total =  Matrix([
 [                 0,                  0,                 0,     1.0]])
 ```
 
+
+
 `T_toal[:3,3]` is the gripper position from the inputs we calculated using IK. They are same with RViz. It shows our implementation is right!
 
 We can implement our code into `IK_server.py` now!
+
+
 
 ### Project Implementation
 
 #### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results. 
 ![alt text][result]
 1) I added `ros::Duration(5.0).sleep();` into `line 327` in the` /src/trajectory_sampler.cpp` following suggestions from @tiedyedguys in slack channel. 
-without any comments in that code.
+
 
 #### Postscript:
 
