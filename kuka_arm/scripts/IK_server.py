@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2017 Electric Movement Inc.
-#
-# This file is part of Robotic Arm: Pick and Place project for Udacity
-# Robotics nano-degree program
-#
 # All Rights Reserved.
 
-# Author: Harsh Pandya
+# Author: Pritesh Gudge
 
 # import modules
 import rospy
@@ -198,9 +193,6 @@ class ik_calculator(object):
 
 
                 ##### theta 3 ######
-
-
-
                 phi = np.arccos((s['a2']**2 + d**2 - l**2)/(2*s['a2']*d))
                 alpha = np.arctan2(0.054,1.5)
                 theta3 = np.pi/2 - (phi + alpha)
